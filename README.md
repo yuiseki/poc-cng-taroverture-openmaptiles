@@ -41,12 +41,17 @@ npm start
 
 `src/transform/` は PMTiles・HTTP・MVT エンコードを一切知らない純粋なデータ変換モジュール。入出力は `{theme, layer, zoom, type, properties}` -> `[{layer, properties}]` のプレーンなデータのみで、ジオメトリには触らない。将来このディレクトリを独立リポジトリに切り出せば「PMTiles を一括ダウンロードして OpenMapTiles 形式に変換するバッチツール」にもそのまま流用できる。
 
-変換の実装状況は `src/transform/omt/index.js` のチェックリストを参照。
+変換の実装状況は `src/transform/omt/index.ts` のチェックリストを参照。
+
+## 変換の実装状況
+
+6 テーマすべての変換器が実装済み。出力レイヤーは building / transportation / transportation_name / water / landcover / landuse / park / boundary / place / poi / housenumber の 11 レイヤー。詳細は `src/transform/omt/index.ts` のチェックリストと各変換器のコメントを参照。
 
 ## 既知の制限 (PoC)
 
-- omt モードは現状 building レイヤーのみ。transportation / water / boundary 等は未実装
-- divisions は z12 まで、base は z13 までしかタイルがなく、z13-14 でのオーバーズーム (親タイルからの切り出し) は未実装
+- divisions は z12 まで、base は z13 までしかタイルがなく、z13-14 でのオーバーズーム (親タイルからの切り出し) は未実装。z14 では boundary / water / landcover / landuse / park / place が欠ける
+- poi の subclass は OMT の語彙ではなく Overture の basic_category をそのまま保持している
+- poi の rank は OMT の rank と意味が異なり、Overture の confidence 由来 (1=高信頼 〜 10=低信頼)
 - タイルキャッシュはプロセス内 LRU のみ
 
 ## テスト・型チェック
