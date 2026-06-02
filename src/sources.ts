@@ -42,7 +42,7 @@ export function createSources({
   baseUrl = DEFAULT_BASE_URL,
   themes = Object.keys(THEMES),
 }: CreateSourcesOptions = {}): TileSources {
-  const headers = new Headers({ "user-agent": "poc-cng-taroverture-merge-tile/0.1" });
+  const headers = new Headers({ "user-agent": "poc-cng-taroverture-openmaptiles/0.1" });
   const sources: TileSources = {};
   for (const theme of themes) {
     sources[theme] = new PMTiles(new FetchSource(`${baseUrl}${theme}.pmtiles`, headers));

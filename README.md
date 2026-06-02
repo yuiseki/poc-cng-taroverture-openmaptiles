@@ -1,4 +1,4 @@
-# poc-cng-taroverture-merge-tile
+# poc-cng-taroverture-openmaptiles
 
 リモートにある 6 つの Overture PMTiles を、タイルリクエストごとに HTTP Range で部分取得して動的にマージし、OpenMapTiles スキーマのベクトルタイルとして配信する PoC。
 

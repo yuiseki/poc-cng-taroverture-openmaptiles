@@ -97,7 +97,7 @@ export function buildApp({ sources = createSources(), cacheSize = 256 }: BuildAp
         : omtOutputLayers.map((id) => ({ id, description: `OpenMapTiles ${id}`, fields: {} }));
     return {
       tilejson: "3.0.0",
-      name: `taroverture-merge-tile (${mode})`,
+      name: `taroverture-openmaptiles (${mode})`,
       tiles: [`${base}/tiles/${mode}/{z}/{x}/{y}.mvt`],
       minzoom: 0,
       maxzoom: MAXZOOM,
