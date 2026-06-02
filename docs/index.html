@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <title>taroverture-merge-tile demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>
+    body { margin: 0; }
+    #map { position: absolute; inset: 0; }
+    #panel {
+      position: absolute; top: 10px; left: 10px; z-index: 1;
+      background: rgba(255,255,255,.9); padding: 8px 12px; border-radius: 6px;
+      font: 13px/1.6 sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="panel">
+    <strong>taroverture-merge-tile</strong><br />
+    mode:
+    <label><input type="radio" name="mode" value="raw" checked /> raw</label>
+    <label><input type="radio" name="mode" value="omt" /> omt</label>
+  </div>
+  <div id="map"></div>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script>
+    // raw モード: Overture の全レイヤーを色分け表示するインスペクタ
+    const RAW_LAYERS = {
+      land: { type: "fill", color: "#e8e4d8", geom: "fill" },
+      land_cover: { type: "fill", color: "#cfe3c0", geom: "fill" },
+      land_use: { type: "fill", color: "#e0d8ef", geom: "fill" },
+      water: { type: "fill", color: "#a8c8f0", geom: "fill" },
+      bathymetry: { type: "fill", color: "#c8ddf5", geom: "fill" },
+      division_area: { type: "fill", color: "#f5e8e8", geom: "fill" },
+      building: { type: "fill", color: "#d9c2b0", geom: "fill" },
+      building_part: { type: "fill", color: "#c4a890", geom: "fill" },
+      infrastructure: { type: "line", color: "#888888", geom: "line" },
+      segment: { type: "line", color: "#e08030", geom: "line" },
+      division_boundary: { type: "line", color: "#b050b0", geom: "line" },
+      division: { type: "circle", color: "#b050b0", geom: "point" },
+      place: { type: "circle", color: "#3060d0", geom: "point" },
+      connector: { type: "circle", color: "#e08030", geom: "point" },
+      address: { type: "circle", color: "#30a060", geom: "point" },
+    };
+
+    function rawStyle(base) {
+      const layers = [{ id: "bg", type: "background", paint: { "background-color": "#f8f8f8" } }];
+      for (const [name, def] of Object.entries(RAW_LAYERS)) {
+        const layer = { id: `raw-${name}`, source: "merged", "source-layer": name };
+        if (def.type === "fill") {
+          layer.type = "fill";
+          layer.paint = { "fill-color": def.color, "fill-opacity": 0.6, "fill-outline-color": "#00000033" };
+        } else if (def.type === "line") {
+          layer.type = "line";
+          layer.paint = { "line-color": def.color, "line-width": 1.2 };
+        } else {
+          layer.type = "circle";
+          layer.paint = { "circle-color": def.color, "circle-radius": 2.5, "circle-opacity": 0.8 };
+        }
+        layers.push(layer);
+      }
+      return {
+        version: 8,
+        sources: { merged: { type: "vector", url: `${base}/tiles/raw/tile.json` } },
+        layers,
+      };
+    }
+
+    // omt モード: 変換済みレイヤーのみ表示 (現状 building のみ)
+    function omtStyle(base) {
+      return {
+        version: 8,
+        sources: { merged: { type: "vector", url: `${base}/tiles/omt/tile.json` } },
+        layers: [
+          { id: "bg", type: "background", paint: { "background-color": "#f8f8f8" } },
+          {
+            id: "building-3d",
+            type: "fill-extrusion",
+            source: "merged",
+            "source-layer": "building",
+            paint: {
+              "fill-extrusion-color": "#d9c2b0",
+              "fill-extrusion-height": ["get", "render_height"],
+              "fill-extrusion-base": ["get", "render_min_height"],
+              "fill-extrusion-opacity": 0.85,
+            },
+          },
+        ],
+      };
+    }
+
+    const base = location.origin;
+    const map = new maplibregl.Map({
+      container: "map",
+      style: rawStyle(base),
+      center: [139.767, 35.681], // 東京駅
+      zoom: 14,
+      pitch: 0,
+      hash: true,
+    });
+    map.addControl(new maplibregl.NavigationControl());
+
+    map.on("click", (e) => {
+      const features = map.queryRenderedFeatures(e.point);
+      if (!features.length) return;
+      const f = features[0];
+      new maplibregl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(`<strong>${f.layer["source-layer"]}</strong><pre style="max-height:200px;overflow:auto">${JSON.stringify(f.properties, null, 1)}</pre>`)
+        .addTo(map);
+    });
+
+    document.querySelectorAll('input[name="mode"]').forEach((el) => {
+      el.addEventListener("change", () => {
+        if (el.value === "omt") {
+          map.setStyle(omtStyle(base));
+          map.easeTo({ pitch: 55 });
+        } else {
+          map.setStyle(rawStyle(base));
+          map.easeTo({ pitch: 0 });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
