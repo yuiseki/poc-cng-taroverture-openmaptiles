@@ -102,20 +102,21 @@ test("mergeTiles: ジオメトリが保持される", () => {
   assert.deepEqual({ x: geom[0][1].x, y: geom[0][1].y }, { x: 100, y: 0 });
 });
 
-test("fetchThemeTiles: maxzoom 超過のテーマはリクエストせずスキップする", async () => {
-  let called = false;
+test("fetchThemeTiles: maxzoom 超過のテーマは祖先タイルにフォールバックする (詳細は overzoom.test.ts)", async () => {
+  const calls: Array<[number, number, number]> = [];
+  const data = makeMvt("division", [{ type: 1, properties: {}, loadGeometry: point }]);
   const sources: TileSources = {
     divisions: {
-      getZxy: async () => {
-        called = true;
-        return { data: new Uint8Array([1]) };
+      getZxy: async (z, x, y) => {
+        calls.push([z, x, y]);
+        return { data };
       },
     },
   };
-  // divisions の maxzoom は 12 なので z14 はスキップされる
+  // divisions の maxzoom は 12 なので z14 は z12 の祖先を取得する
   const result = await fetchThemeTiles(sources, 14, 0, 0);
-  assert.equal(called, false);
-  assert.deepEqual(result, []);
+  assert.deepEqual(calls, [[12, 0, 0]]);
+  assert.equal(result[0].scale, 4);
 });
 
 test("fetchThemeTiles: タイルが存在しないテーマは結果から除外される", async () => {

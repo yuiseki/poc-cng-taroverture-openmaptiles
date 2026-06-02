@@ -10,10 +10,16 @@ import type { TransformFn, Properties } from "./transform/index.js";
 export interface ThemeTile {
   theme: string;
   data: Uint8Array;
+  /** overzoom 倍率 (1 = 等倍)。z がテーマの maxzoom を超えたとき 2^(z - maxzoom) */
+  scale?: number;
+  /** 親タイル内での子タイルの象限オフセット (0 <= dx,dy < scale) */
+  dx?: number;
+  dy?: number;
 }
 
 // 各テーマの PMTiles から z/x/y のタイルを並列取得する。
-// 戻り値: [{theme, data}] (存在しないテーマはスキップ)
+// テーマの maxzoom を超えるズームでは祖先タイル (maxzoom) を取得し、
+// overzoom 情報 (scale, dx, dy) を付けて返す。存在しないテーマはスキップ。
 export async function fetchThemeTiles(
   sources: TileSources,
   z: number,
@@ -24,13 +30,60 @@ export async function fetchThemeTiles(
   const results = await Promise.all(
     entries.map(async ([theme, pm]): Promise<ThemeTile | null> => {
       const maxzoom = THEME_MAXZOOM[theme];
-      if (maxzoom !== undefined && z > maxzoom) return null;
-      const resp = await pm.getZxy(z, x, y);
+      let fz = z;
+      let fx = x;
+      let fy = y;
+      let scale = 1;
+      let dx = 0;
+      let dy = 0;
+      if (maxzoom !== undefined && z > maxzoom) {
+        const depth = z - maxzoom;
+        fz = maxzoom;
+        fx = x >> depth;
+        fy = y >> depth;
+        scale = 2 ** depth;
+        dx = x - (fx << depth);
+        dy = y - (fy << depth);
+      }
+      const resp = await pm.getZxy(fz, fx, fy);
       if (!resp || !resp.data || resp.data.byteLength === 0) return null;
-      return { theme, data: new Uint8Array(resp.data as ArrayBuffer) };
+      return { theme, data: new Uint8Array(resp.data as ArrayBuffer), scale, dx, dy };
     }),
   );
   return results.filter((r): r is ThemeTile => r !== null);
+}
+
+// overzoom: 親タイル座標 p を子タイル座標 c = p * scale - d * extent に変換し、
+// 子タイル範囲 (バッファ付き) に bbox がかからないフィーチャは null を返す。
+// ポリゴンの厳密なクリップはしない (レンダラ側でクリップされる前提の PoC 判断)。
+const OVERZOOM_BUFFER = 256;
+
+function overzoomGeometry(
+  geometry: Array<Array<{ x: number; y: number }>>,
+  scale: number,
+  dx: number,
+  dy: number,
+  extent: number,
+): Array<Array<{ x: number; y: number }>> | null {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  const out = geometry.map((ring) =>
+    ring.map((p) => {
+      const x = p.x * scale - dx * extent;
+      const y = p.y * scale - dy * extent;
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+      return { x, y };
+    }),
+  );
+  const lo = -OVERZOOM_BUFFER;
+  const hi = extent + OVERZOOM_BUFFER;
+  if (maxX < lo || maxY < lo || minX > hi || minY > hi) return null;
+  return out;
 }
 
 // themeTiles をデコードし、transform を通して出力レイヤーを組み立て、
@@ -41,12 +94,30 @@ export function mergeTiles(
   zoom: number,
 ): Buffer | null {
   const outLayers = new Map<string, { extent: number; features: VtPbfFeature[] }>();
-  for (const { theme, data } of themeTiles) {
+  for (const { theme, data, scale = 1, dx = 0, dy = 0 } of themeTiles) {
     const tile = new VectorTile(new Protobuf(data));
     for (const name of Object.keys(tile.layers)) {
       const layer = tile.layers[name];
       for (let i = 0; i < layer.length; i++) {
         const feature = layer.feature(i);
+
+        // overzoom 時はジオメトリを子タイル座標へ変換し、範囲外なら捨てる。
+        // 等倍時はタイル座標のまま無変換で引き回す。
+        let loadGeometry: () => Array<Array<{ x: number; y: number }>>;
+        if (scale !== 1) {
+          const transformed = overzoomGeometry(
+            feature.loadGeometry(),
+            scale,
+            dx,
+            dy,
+            layer.extent,
+          );
+          if (transformed === null) continue;
+          loadGeometry = () => transformed;
+        } else {
+          loadGeometry = () => feature.loadGeometry();
+        }
+
         const outputs = transform({
           theme,
           layer: name,
@@ -63,8 +134,7 @@ export function mergeTiles(
           target.features.push({
             type: feature.type,
             properties: sanitizeProperties(out.properties),
-            // ジオメトリはタイル座標のまま無変換で引き回す
-            loadGeometry: () => feature.loadGeometry(),
+            loadGeometry,
           });
         }
       }
