@@ -20,8 +20,8 @@
     <strong>taroverture-merge-tile</strong><br />
     style:
     <label><input type="radio" name="mode" value="raw" /> raw</label>
-    <label><input type="radio" name="mode" value="omt" checked /> omt</label>
-    <label><input type="radio" name="mode" value="bright" /> bright</label>
+    <label><input type="radio" name="mode" value="omt" /> omt</label>
+    <label><input type="radio" name="mode" value="bright" checked /> bright</label>
     <label><input type="radio" name="mode" value="fiord" /> fiord</label>
   </div>
   <div id="map"></div>
@@ -298,7 +298,7 @@
     const base = location.origin;
     const map = new maplibregl.Map({
       container: "map",
-      style: omtStyle(base),
+      style: `${base}/styles/osm-bright`,
       center: [139.767, 35.681], // 東京駅
       zoom: 14,
       pitch: 0,
