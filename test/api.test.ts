@@ -80,6 +80,24 @@ test("全テーマ空タイルなら 204", async () => {
   await app.close();
 });
 
+test("GET /styles/osm-bright は openmaptiles の url を自サーバに書き換えて返す", async () => {
+  const app = buildApp({ sources: fakeSources() });
+  const res = await app.inject({ url: "/styles/osm-bright" });
+  assert.equal(res.statusCode, 200);
+  const style = res.json();
+  assert.equal(style.name, "Bright");
+  assert.ok(style.sources.openmaptiles.url.endsWith("/tiles/omt/tile.json"));
+  assert.ok(!style.sources.openmaptiles.url.startsWith("pmtiles://"));
+  await app.close();
+});
+
+test("GET /styles/unknown は 404", async () => {
+  const app = buildApp({ sources: fakeSources() });
+  const res = await app.inject({ url: "/styles/unknown" });
+  assert.equal(res.statusCode, 404);
+  await app.close();
+});
+
 test("2回目のリクエストはキャッシュから返る (upstream 1回のみ)", async () => {
   let calls = 0;
   const buildingsTile = makeMvt("building", [{ type: 3, properties: {}, loadGeometry: polygon }]);

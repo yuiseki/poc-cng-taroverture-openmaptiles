@@ -65,6 +65,25 @@ export function buildApp({ sources = createSources(), cacheSize = 256 }: BuildAp
     return reply.type("text/html").send(html);
   });
 
+  // docs/ に置いた OpenMapTiles 互換スタイルを、openmaptiles ソースの url だけ
+  // 自サーバの tile.json に書き換えて配信する (ファイル本体は無改変で使い回せる)
+  const EXTERNAL_STYLES = new Set(["osm-bright", "osm-fiord"]);
+
+  app.get<{ Params: { name: string } }>("/styles/:name", async (req, reply) => {
+    const { name } = req.params;
+    if (!EXTERNAL_STYLES.has(name)) {
+      return reply.code(404).send({ error: `unknown style: ${name}` });
+    }
+    const style = JSON.parse(
+      readFileSync(join(__dirname, "..", "docs", `${name}.json`), "utf-8"),
+    );
+    const base = `${req.protocol}://${req.headers.host}`;
+    if (style.sources?.openmaptiles) {
+      style.sources.openmaptiles.url = `${base}/tiles/omt/tile.json`;
+    }
+    return style;
+  });
+
   app.get<{ Params: { mode: string } }>("/tiles/:mode/tile.json", async (req, reply) => {
     const { mode } = req.params;
     if (!MODES[mode]) return reply.code(404).send({ error: `unknown mode: ${mode}` });
