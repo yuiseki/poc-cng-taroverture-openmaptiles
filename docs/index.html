@@ -67,13 +67,81 @@
       };
     }
 
-    // omt モード: 変換済みレイヤーのみ表示 (現状 building のみ)
+    // omt モード: 変換済みレイヤーのみ表示 (building + transportation)
+    const OMT_ROAD_COLORS = {
+      motorway: "#e892a2",
+      trunk: "#f9b29c",
+      primary: "#fcd6a4",
+      secondary: "#f7fabf",
+      tertiary: "#ffffff",
+      minor: "#ffffff",
+      service: "#ffffff",
+      path: "#fa8072",
+      rail: "#707070",
+      transit: "#4040a0",
+    };
+
     function omtStyle(base) {
       return {
         version: 8,
         sources: { merged: { type: "vector", url: `${base}/tiles/omt/tile.json` } },
         layers: [
           { id: "bg", type: "background", paint: { "background-color": "#f8f8f8" } },
+          {
+            id: "transportation-casing",
+            type: "line",
+            source: "merged",
+            "source-layer": "transportation",
+            filter: ["!", ["in", ["get", "class"], ["literal", ["path", "rail", "transit"]]]],
+            paint: { "line-color": "#b0b0b0", "line-width": 4 },
+          },
+          {
+            id: "transportation-road",
+            type: "line",
+            source: "merged",
+            "source-layer": "transportation",
+            filter: ["!", ["in", ["get", "class"], ["literal", ["path", "rail", "transit"]]]],
+            paint: {
+              "line-color": [
+                "coalesce",
+                ["get", ["get", "class"], ["literal", OMT_ROAD_COLORS]],
+                "#cccccc",
+              ],
+              "line-width": [
+                "match", ["get", "class"],
+                "motorway", 4, "trunk", 3.5, "primary", 3, "secondary", 2.5,
+                2,
+              ],
+            },
+          },
+          {
+            id: "transportation-path",
+            type: "line",
+            source: "merged",
+            "source-layer": "transportation",
+            filter: ["==", ["get", "class"], "path"],
+            paint: {
+              "line-color": OMT_ROAD_COLORS.path,
+              "line-width": 1,
+              "line-dasharray": [2, 2],
+            },
+          },
+          {
+            id: "transportation-rail",
+            type: "line",
+            source: "merged",
+            "source-layer": "transportation",
+            filter: ["in", ["get", "class"], ["literal", ["rail", "transit"]]],
+            paint: {
+              "line-color": [
+                "match", ["get", "class"],
+                "transit", OMT_ROAD_COLORS.transit,
+                OMT_ROAD_COLORS.rail,
+              ],
+              "line-width": 1.5,
+              "line-dasharray": [4, 2],
+            },
+          },
           {
             id: "building-3d",
             type: "fill-extrusion",

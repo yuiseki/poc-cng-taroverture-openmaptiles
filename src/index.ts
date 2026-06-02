@@ -12,7 +12,7 @@ import {
   createRegistryTransform,
   type TransformFn,
 } from "./transform/index.js";
-import { omtRegistry } from "./transform/omt/index.js";
+import { omtRegistry, omtOutputLayers } from "./transform/omt/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -74,9 +74,7 @@ export function buildApp({ sources = createSources(), cacheSize = 256 }: BuildAp
         ? Object.entries(THEMES).flatMap(([theme, layers]) =>
             layers.map((id) => ({ id, description: `overture ${theme}/${id}`, fields: {} })),
           )
-        : Object.keys(omtRegistry).length > 0
-          ? [{ id: "building", description: "OpenMapTiles building", fields: {} }]
-          : [];
+        : omtOutputLayers.map((id) => ({ id, description: `OpenMapTiles ${id}`, fields: {} }));
     return {
       tilejson: "3.0.0",
       name: `taroverture-merge-tile (${mode})`,
