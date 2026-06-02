@@ -39,6 +39,19 @@ export type TransformFn = (input: TransformInput) => TransformOutput[];
 /** "theme/layer" -> 変換関数 */
 export type TransformRegistry = Record<string, TransformFn>;
 
+/**
+ * レイヤー後処理。per-feature の純粋関数 (TransformFn) では書けない
+ * タイル単位の処理 (ソート・件数キャップ・順位付け等) のためのフック。
+ * 出力レイヤー名 -> 後処理関数。features の並べ替え・絞り込み・属性の書き換えのみ行い、
+ * ジオメトリには触らない。
+ */
+export interface PostProcessFeature {
+  type: number;
+  properties: Record<string, unknown>;
+}
+export type LayerPostProcessor = <T extends PostProcessFeature>(features: T[]) => T[];
+export type LayerPostProcessors = Record<string, LayerPostProcessor>;
+
 // 変換せずそのまま通す (デバッグ・生データ確認用)
 export const passthroughTransform: TransformFn = (input) => [
   { layer: input.layer, properties: input.properties },

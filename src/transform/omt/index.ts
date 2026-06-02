@@ -13,14 +13,14 @@
 //   [x] divisions/division       -> place
 //   [x] places/place             -> poi
 //   [x] addresses/address        -> housenumber
-import type { TransformRegistry } from "../index.js";
+import type { TransformRegistry, LayerPostProcessors } from "../index.js";
 import { building, buildingPart } from "./building.js";
 import { segment } from "./transportation.js";
 import { water } from "./water.js";
 import { land, landCover } from "./landcover.js";
 import { landUse } from "./landuse.js";
 import { divisionBoundary, division } from "./divisions.js";
-import { place } from "./poi.js";
+import { place, poiPostProcess } from "./poi.js";
 import { address } from "./housenumber.js";
 
 export const omtRegistry: TransformRegistry = {
@@ -35,6 +35,11 @@ export const omtRegistry: TransformRegistry = {
   "divisions/division": division,
   "places/place": place,
   "addresses/address": address,
+};
+
+// タイル単位の後処理 (poi の充実度ソート・キャップ・rank 付与)
+export const omtPostProcessors: LayerPostProcessors = {
+  poi: poiPostProcess,
 };
 
 // omt モードが出力しうる OMT レイヤー名 (tile.json の vector_layers 用)

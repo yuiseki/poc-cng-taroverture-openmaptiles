@@ -2,12 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { place } from "../src/transform/omt/poi.js";
 
+// confidence は変換器の必須条件 (>= 0.7) なのでヘルパーで付与する
 const input = (properties: Record<string, unknown>, zoom = 14) => ({
   theme: "places",
   layer: "place",
   zoom,
   type: 1,
-  properties: { "@name": "テスト店", ...properties },
+  properties: { "@name": "テスト店", confidence: 0.8, ...properties },
 });
 
 test("poi: 代表的な basic_category のマッピング", () => {
@@ -99,23 +100,9 @@ test("poi: 名前がなければ破棄される", () => {
     layer: "place",
     zoom: 14,
     type: 1,
-    properties: { basic_category: "restaurant" },
+    properties: { basic_category: "restaurant", confidence: 0.8 },
   });
   assert.equal(out.length, 0);
-});
-
-test("poi: confidence から rank が決まる (高信頼=1, 低信頼=10)", () => {
-  const high = place(input({ basic_category: "restaurant", confidence: 0.95 }));
-  assert.equal(high[0]?.properties.rank, 1);
-  const low = place(input({ basic_category: "restaurant", confidence: 0.08 }));
-  assert.equal(low[0]?.properties.rank, 10);
-  const mid = place(input({ basic_category: "restaurant", confidence: 0.5 }));
-  assert.equal(mid[0]?.properties.rank, 5);
-});
-
-test("poi: confidence がなければ rank=10", () => {
-  const out = place(input({ basic_category: "restaurant" }));
-  assert.equal(out[0]?.properties.rank, 10);
 });
 
 test("poi: 多言語名が引き継がれる", () => {

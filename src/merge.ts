@@ -5,7 +5,7 @@ import { VectorTile } from "@mapbox/vector-tile";
 import Protobuf from "pbf";
 import vtpbf, { type VtPbfFeature, type VtPbfLayer } from "vt-pbf";
 import { THEME_MAXZOOM, type TileSources } from "./sources.js";
-import type { TransformFn, Properties } from "./transform/index.js";
+import type { TransformFn, Properties, LayerPostProcessors } from "./transform/index.js";
 
 export interface ThemeTile {
   theme: string;
@@ -92,6 +92,7 @@ export function mergeTiles(
   themeTiles: ThemeTile[],
   transform: TransformFn,
   zoom: number,
+  postProcessors?: LayerPostProcessors,
 ): Buffer | null {
   const outLayers = new Map<string, { extent: number; features: VtPbfFeature[] }>();
   for (const { theme, data, scale = 1, dx = 0, dy = 0 } of themeTiles) {
@@ -138,6 +139,15 @@ export function mergeTiles(
           });
         }
       }
+    }
+  }
+  // タイル単位の後処理 (ソート・件数キャップ等)。スキーマ知識は transform 側が持つ
+  if (postProcessors) {
+    for (const [name, target] of outLayers) {
+      const postProcess = postProcessors[name];
+      if (!postProcess) continue;
+      target.features = postProcess(target.features);
+      if (target.features.length === 0) outLayers.delete(name);
     }
   }
   if (outLayers.size === 0) return null;

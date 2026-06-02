@@ -9,9 +9,12 @@
 // subclass には basic_category をそのまま保持する (OMT の subclass 語彙とは異なるが、
 // 元情報を失わないことを優先する PoC 判断)。
 //
-// rank は Overture の confidence (0-1) から 1 (高信頼) 〜 10 (低信頼) を導出する。
-// OMT の rank とは意味が異なるが、クライアント側で POI を間引くフィルタとして使える。
-import type { TransformFn } from "../index.js";
+// Overture (Meta 由来) の POI は OSM より桁違いに密なため、2 段階で間引く:
+//   1. 変換器 (per-feature): confidence < 0.7 を破棄し、連絡先系属性の充実度を
+//      richness スコアとして内部属性 _score に出力する
+//   2. 後処理 (per-tile): (_score, confidence) 降順でソートして上位 1000 件にキャップし、
+//      順位帯から rank 1 (上位) 〜 5 を付与する。スタイル側は rank<=N で密度を調整できる
+import type { TransformFn, LayerPostProcessor } from "../index.js";
 import { namesOf, parseJson } from "./names.js";
 
 const CLASS_BY_BASIC: Record<string, string> = {
@@ -234,17 +237,72 @@ function omtPoiClass(properties: Record<string, unknown>): string | undefined {
   return undefined;
 }
 
+const MIN_CONFIDENCE = 0.7;
+
+// 連絡先系属性の保有数を richness スコアにする (空配列・空オブジェクトは数えない)
+function richnessScore(properties: Record<string, unknown>): number {
+  let score = 0;
+  for (const key of ["websites", "phones", "socials", "emails"]) {
+    const parsed = parseJson(properties[key]);
+    if (Array.isArray(parsed) && parsed.length > 0) score += 1;
+  }
+  const brand = parseJson(properties.brand) as { names?: { primary?: unknown } } | undefined;
+  if (typeof brand?.names?.primary === "string") score += 1;
+  return score;
+}
+
 export const place: TransformFn = ({ properties }) => {
+  const confidence = properties.confidence;
+  if (typeof confidence !== "number" || confidence < MIN_CONFIDENCE) return [];
   const names = namesOf(properties);
   if (names === null) return [];
   const cls = omtPoiClass(properties);
   if (cls === undefined) return [];
 
-  const confidence = typeof properties.confidence === "number" ? properties.confidence : 0;
-  const rank = Math.max(1, Math.min(10, Math.ceil((1 - confidence) * 10)));
-
   const subclass =
     typeof properties.basic_category === "string" ? properties.basic_category : cls;
 
-  return [{ layer: "poi", properties: { ...names, class: cls, subclass, rank } }];
+  return [
+    {
+      layer: "poi",
+      properties: {
+        ...names,
+        class: cls,
+        subclass,
+        // 内部属性 (poiPostProcess が rank に変換して除去する)
+        _score: richnessScore(properties),
+        _confidence: confidence,
+      },
+    },
+  ];
+};
+
+const MAX_POI_PER_TILE = 1000;
+
+// 順位帯 -> rank。値域は OMT スタイルの流儀に合わせる:
+// OSM Bright は rank<=14 を z14、15-24 を z15、>=25 を z16 で出し分けるため、
+// top100=10 (z14 で表示)、次150=20 (z15)、以降=30/40/50 (z16+) とする
+const RANK_BOUNDS: Array<[number, number]> = [
+  [100, 10],
+  [250, 20],
+  [500, 30],
+  [750, 40],
+];
+const RANK_REST = 50;
+
+export const poiPostProcess: LayerPostProcessor = (features) => {
+  const num = (v: unknown) => (typeof v === "number" ? v : 0);
+  const sorted = [...features].sort((a, b) => {
+    const score = num(b.properties._score) - num(a.properties._score);
+    if (score !== 0) return score;
+    return num(b.properties._confidence) - num(a.properties._confidence);
+  });
+  const capped = sorted.slice(0, MAX_POI_PER_TILE);
+  capped.forEach((f, idx) => {
+    const bound = RANK_BOUNDS.find(([limit]) => idx < limit);
+    f.properties.rank = bound ? bound[1] : RANK_REST;
+    delete f.properties._score;
+    delete f.properties._confidence;
+  });
+  return capped;
 };

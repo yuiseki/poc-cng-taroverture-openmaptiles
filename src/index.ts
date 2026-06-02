@@ -11,16 +11,17 @@ import {
   passthroughTransform,
   createRegistryTransform,
   type TransformFn,
+  type LayerPostProcessors,
 } from "./transform/index.js";
-import { omtRegistry, omtOutputLayers } from "./transform/omt/index.js";
+import { omtRegistry, omtOutputLayers, omtPostProcessors } from "./transform/omt/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const MODES: Record<string, TransformFn> = {
+const MODES: Record<string, { transform: TransformFn; postProcessors?: LayerPostProcessors }> = {
   // raw: Overture のレイヤー名・属性をそのまま 1 枚にマージ (デバッグ用)
-  raw: passthroughTransform,
+  raw: { transform: passthroughTransform },
   // omt: OpenMapTiles スキーマへ変換 (レジストリ未登録レイヤーは落ちる)
-  omt: createRegistryTransform(omtRegistry),
+  omt: { transform: createRegistryTransform(omtRegistry), postProcessors: omtPostProcessors },
 };
 
 const MAXZOOM = 14;
@@ -108,8 +109,8 @@ export function buildApp({ sources = createSources(), cacheSize = 256 }: BuildAp
     "/tiles/:mode/:z/:x/:file",
     async (req, reply) => {
       const { mode, z, x, file } = req.params;
-      const transform = MODES[mode];
-      if (!transform) return reply.code(404).send({ error: `unknown mode: ${mode}` });
+      const modeDef = MODES[mode];
+      if (!modeDef) return reply.code(404).send({ error: `unknown mode: ${mode}` });
       const m = /^(\d+)\.(mvt|pbf)$/.exec(file);
       if (!m) return reply.code(400).send({ error: "tile path must be /{z}/{x}/{y}.mvt" });
       const zi = Number(z);
@@ -131,7 +132,7 @@ export function buildApp({ sources = createSources(), cacheSize = 256 }: BuildAp
       let gz = tileCache.get(cacheKey);
       if (gz === undefined) {
         const themeTiles = await fetchThemeTiles(sources, zi, xi, yi);
-        const merged = mergeTiles(themeTiles, transform, zi);
+        const merged = mergeTiles(themeTiles, modeDef.transform, zi, modeDef.postProcessors);
         gz = merged === null ? null : gzipSync(merged);
         tileCache.set(cacheKey, gz);
       }
