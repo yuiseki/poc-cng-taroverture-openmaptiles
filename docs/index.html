@@ -19,8 +19,8 @@
   <div id="panel">
     <strong>taroverture-merge-tile</strong><br />
     mode:
-    <label><input type="radio" name="mode" value="raw" checked /> raw</label>
-    <label><input type="radio" name="mode" value="omt" /> omt</label>
+    <label><input type="radio" name="mode" value="raw" /> raw</label>
+    <label><input type="radio" name="mode" value="omt" checked /> omt</label>
   </div>
   <div id="map"></div>
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -255,7 +255,7 @@
     const base = location.origin;
     const map = new maplibregl.Map({
       container: "map",
-      style: rawStyle(base),
+      style: omtStyle(base),
       center: [139.767, 35.681], // 東京駅
       zoom: 14,
       pitch: 0,
@@ -275,13 +275,7 @@
 
     document.querySelectorAll('input[name="mode"]').forEach((el) => {
       el.addEventListener("change", () => {
-        if (el.value === "omt") {
-          map.setStyle(omtStyle(base));
-          map.easeTo({ pitch: 55 });
-        } else {
-          map.setStyle(rawStyle(base));
-          map.easeTo({ pitch: 0 });
-        }
+        map.setStyle(el.value === "omt" ? omtStyle(base) : rawStyle(base));
       });
     });
   </script>
