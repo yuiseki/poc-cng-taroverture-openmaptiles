@@ -229,6 +229,30 @@
             },
           },
           {
+            id: "poi-label",
+            type: "symbol",
+            source: "merged",
+            "source-layer": "poi",
+            minzoom: 14,
+            filter: ["<=", ["get", "rank"], 2],
+            layout: {
+              "text-field": ["get", "name"],
+              "text-font": ["Noto Sans CJK JP Regular"],
+              "text-size": 10,
+              "text-max-width": 8,
+            },
+            paint: {
+              "text-color": [
+                "match", ["get", "class"],
+                "railway", "#1a5fb4",
+                "restaurant", "#b5651d", "cafe", "#b5651d", "bar", "#b5651d", "fast_food", "#b5651d",
+                "#5a7a5a",
+              ],
+              "text-halo-color": "#ffffff",
+              "text-halo-width": 1.2,
+            },
+          },
+          {
             id: "place-label",
             type: "symbol",
             source: "merged",
