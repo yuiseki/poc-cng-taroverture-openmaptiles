@@ -9,8 +9,9 @@
 //   [x] base/land                -> landcover
 //   [x] base/land_cover          -> landcover
 //   [x] base/land_use            -> landuse, park, landcover
-//   [ ] divisions/division_boundary -> boundary
-//   [ ] places/place             -> poi, place
+//   [x] divisions/division_boundary -> boundary
+//   [x] divisions/division       -> place
+//   [ ] places/place             -> poi
 //   [ ] addresses/address        -> housenumber
 import type { TransformRegistry } from "../index.js";
 import { building, buildingPart } from "./building.js";
@@ -18,6 +19,7 @@ import { segment } from "./transportation.js";
 import { water } from "./water.js";
 import { land, landCover } from "./landcover.js";
 import { landUse } from "./landuse.js";
+import { divisionBoundary, division } from "./divisions.js";
 
 export const omtRegistry: TransformRegistry = {
   "buildings/building": building,
@@ -27,6 +29,8 @@ export const omtRegistry: TransformRegistry = {
   "base/land": land,
   "base/land_cover": landCover,
   "base/land_use": landUse,
+  "divisions/division_boundary": divisionBoundary,
+  "divisions/division": division,
 };
 
 // omt モードが出力しうる OMT レイヤー名 (tile.json の vector_layers 用)
@@ -38,4 +42,6 @@ export const omtOutputLayers = [
   "landcover",
   "landuse",
   "park",
+  "boundary",
+  "place",
 ];

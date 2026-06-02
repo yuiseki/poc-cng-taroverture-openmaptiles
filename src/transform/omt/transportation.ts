@@ -7,6 +7,7 @@
 // Overture の segment.class は OSM の highway 値由来なので OMT class へはほぼ素通しで、
 // residential 等 -> minor、footway 等 -> path の集約だけ行う。
 import type { TransformFn, TransformOutput, Properties } from "../index.js";
+import { namesOf, parseJson } from "./names.js";
 
 // OMT class -> 表示開始ズーム (OMT の標準的な minzoom に概ね合わせた PoC 値)
 const CLASS_MINZOOM: Record<string, number> = {
@@ -44,15 +45,6 @@ const TRANSIT_VALUES = new Set(["subway", "light_rail", "monorail", "tram"]);
 const SERVICE_VALUES = new Set(["parking_aisle", "driveway", "alley", "spur", "yard", "siding"]);
 
 const PAVED_VALUES = new Set(["paved", "asphalt", "concrete", "paving_stones", "sett"]);
-
-function parseJson(v: unknown): unknown {
-  if (typeof v !== "string") return undefined;
-  try {
-    return JSON.parse(v);
-  } catch {
-    return undefined;
-  }
-}
 
 // Overture の (subtype, class) -> OMT の (class, subclass)
 function omtClass(
@@ -107,22 +99,6 @@ function surfaceOf(properties: Properties): string | undefined {
   const value = (parsed[0] as { value?: unknown }).value;
   if (typeof value !== "string") return undefined;
   return PAVED_VALUES.has(value) ? "paved" : "unpaved";
-}
-
-// names: {common: {en: ..., ja: ...}, primary: ...} から多言語名を引く
-function namesOf(properties: Properties): Record<string, string> | null {
-  const name = properties["@name"];
-  if (typeof name !== "string" || name === "") return null;
-  const out: Record<string, string> = { name };
-  const parsed = parseJson(properties.names) as
-    | { common?: Record<string, unknown> }
-    | undefined;
-  const common = parsed?.common;
-  if (common) {
-    if (typeof common.en === "string") out.name_en = common.en;
-    if (typeof common.ja === "string") out["name:ja"] = common.ja;
-  }
-  return out;
 }
 
 const NAME_MINZOOM = 12;
