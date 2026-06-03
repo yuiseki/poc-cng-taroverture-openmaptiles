@@ -44,6 +44,23 @@ npm start
 | --- | --- |
 | ![bright](docs/screenshot-bright.png) | ![fiord](docs/screenshot-fiord.png) |
 
+## Knative へのデプロイ
+
+ステートレス (キャッシュはプロセス内 LRU のみ) なので、スケールトゥゼロする Knative Service と相性がいい。ローカル (docker-desktop + Knative Serving + Kourier) での手順:
+
+```sh
+docker build -t dev.local/poc-cng-taroverture-openmaptiles:0.1.0 .
+kubectl apply -f k8s/namespace.yaml -f k8s/ksvc.yaml
+
+# cluster-local ドメインなので内部ゲートウェイ経由で確認
+kubectl port-forward -n kourier-system svc/kourier-internal 18081:80 &
+curl -H "Host: taroverture-openmaptiles.knative-pool.svc.cluster.local" \
+  http://localhost:18081/tiles/omt/14/14552/6451.mvt -o tile.mvt.gz
+```
+
+- イメージ名の `dev.local/` プレフィックスは Knative の tag-to-digest 解決 (レジストリ問い合わせ) をスキップするため
+- 初回リクエストは PMTiles の header/directory fetch が走るため、`scale-down-delay: 60s` でウォーム済み pod (ディレクトリキャッシュ・タイル LRU) をしばらく残す
+
 ## 設計方針: スキーマ変換の疎結合
 
 `src/transform/` は PMTiles・HTTP・MVT エンコードを一切知らない純粋なデータ変換モジュール。入出力は `{theme, layer, zoom, type, properties}` -> `[{layer, properties}]` のプレーンなデータのみで、ジオメトリには触らない。将来このディレクトリを独立リポジトリに切り出せば「PMTiles を一括ダウンロードして OpenMapTiles 形式に変換するバッチツール」にもそのまま流用できる。
