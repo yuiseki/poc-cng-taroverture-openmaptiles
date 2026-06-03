@@ -68,7 +68,7 @@ z 上で:
 
 ```sh
 docker build -t taroverture-openmaptiles:0.1.0 .
-docker save taroverture-openmaptiles:0.1.0 | sudo ctr -n k8s.io images import -
+docker save taroverture-openmaptiles:0.1.0 | ctr -n k8s.io images import -
 kubectl apply -f k8s/z/ksvc.yaml
 curl http://taroverture-openmaptiles.yuiseki.com/health
 ```
