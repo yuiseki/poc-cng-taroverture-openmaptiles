@@ -46,11 +46,13 @@ npm start
 
 ## Knative へのデプロイ
 
-ステートレス (キャッシュはプロセス内 LRU のみ) なので、スケールトゥゼロする Knative Service と相性がいい。ローカル (docker-desktop + Knative Serving + Kourier) での手順:
+ステートレス (キャッシュはプロセス内 LRU のみ) なので、スケールトゥゼロする Knative Service と相性がいい。マニフェストはクラスタごとに `k8s/local/` と `k8s/z/` に分かれている。
+
+### local (docker-desktop + Knative Serving + Kourier)
 
 ```sh
 docker build -t dev.local/poc-cng-taroverture-openmaptiles:0.1.0 .
-kubectl apply -f k8s/namespace.yaml -f k8s/ksvc.yaml
+kubectl apply -f k8s/local/namespace.yaml -f k8s/local/ksvc.yaml
 
 # cluster-local ドメインなので内部ゲートウェイ経由で確認
 kubectl port-forward -n kourier-system svc/kourier-internal 18081:80 &
@@ -58,8 +60,24 @@ curl -H "Host: taroverture-openmaptiles.knative-pool.svc.cluster.local" \
   http://localhost:18081/tiles/omt/14/14552/6451.mvt -o tile.mvt.gz
 ```
 
-- イメージ名の `dev.local/` プレフィックスは Knative の tag-to-digest 解決 (レジストリ問い合わせ) をスキップするため
-- 初回リクエストは PMTiles の header/directory fetch が走るため、`scale-down-delay: 60s` でウォーム済み pod (ディレクトリキャッシュ・タイル LRU) をしばらく残す
+イメージ名の `dev.local/` プレフィックスは Knative の tag-to-digest 解決 (レジストリ問い合わせ) をスキップするため。
+
+### z クラスタ (local image import)
+
+z 上で:
+
+```sh
+docker build -t taroverture-openmaptiles:0.1.0 .
+docker save taroverture-openmaptiles:0.1.0 | sudo ctr -n k8s.io images import -
+kubectl apply -f k8s/z/ksvc.yaml
+curl http://taroverture-openmaptiles.yuiseki.com/health
+```
+
+素のイメージ名は docker.io 扱いになり、`registries-skipping-tag-resolving` (docker.io) で digest 解決がスキップされる。
+
+### 共通の設計判断
+
+初回リクエストは PMTiles の header/directory fetch が走るため、`scale-down-delay: 60s` でウォーム済み pod (ディレクトリキャッシュ・タイル LRU) をしばらく残す。
 
 ## 設計方針: スキーマ変換の疎結合
 
