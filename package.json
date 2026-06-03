@@ -1,6 +1,6 @@
 {
   "name": "poc-cng-taroverture-openmaptiles",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "PoC: merge 6 remote Overture PMTiles into a single OpenMapTiles-schema vector tile on the fly",
   "type": "module",
   "main": "src/index.ts",

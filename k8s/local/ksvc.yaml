@@ -1,5 +1,5 @@
 # ローカル (docker-desktop) 用。ローカルでビルドしたイメージをそのまま使う:
-#   docker build -t dev.local/poc-cng-taroverture-openmaptiles:0.1.0 .
+#   docker build -t dev.local/poc-cng-taroverture-openmaptiles:0.1.1 .
 #   kubectl apply -f k8s/namespace.yaml -f k8s/ksvc.yaml
 apiVersion: serving.knative.dev/v1
 kind: Service
@@ -20,7 +20,7 @@ spec:
       containerConcurrency: 10
       timeoutSeconds: 120
       containers:
-        - image: dev.local/poc-cng-taroverture-openmaptiles:0.1.0
+        - image: dev.local/poc-cng-taroverture-openmaptiles:0.1.1
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

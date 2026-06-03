@@ -55,7 +55,9 @@ export interface BuildAppOptions {
 }
 
 export function buildApp({ sources = createSources(), cacheSize = 256 }: BuildAppOptions = {}): FastifyInstance {
-  const app = Fastify({ logger: true });
+  // TLS 終端プロキシ (Kourier の前段) の X-Forwarded-Proto を尊重して
+  // tile.json / styles の絶対 URL を https で組み立てる
+  const app = Fastify({ logger: true, trustProxy: true });
   app.register(cors, { origin: true });
   const tileCache = new LruCache<string, Buffer | null>(cacheSize);
 

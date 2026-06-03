@@ -1,7 +1,7 @@
 # z クラスタ (yuisekin-z, x86_64 単一ノード) 用。
 # イメージは z 上で docker build して containerd (k8s.io namespace) に import する:
-#   docker build -t taroverture-openmaptiles:0.1.0 .
-#   docker save taroverture-openmaptiles:0.1.0 | ctr -n k8s.io images import -
+#   docker build -t taroverture-openmaptiles:0.1.1 .
+#   docker save taroverture-openmaptiles:0.1.1 | ctr -n k8s.io images import -
 #   kubectl apply -f k8s/z/ksvc.yaml
 # 素のイメージ名は docker.io 扱いになり、config-deployment の
 # registries-skipping-tag-resolving (docker.io) で digest 解決がスキップされる。
@@ -24,7 +24,7 @@ spec:
       containerConcurrency: 10
       timeoutSeconds: 120
       containers:
-        - image: taroverture-openmaptiles:0.1.0
+        - image: taroverture-openmaptiles:0.1.1
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

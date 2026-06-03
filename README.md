@@ -51,7 +51,7 @@ npm start
 ### local (docker-desktop + Knative Serving + Kourier)
 
 ```sh
-docker build -t dev.local/poc-cng-taroverture-openmaptiles:0.1.0 .
+docker build -t dev.local/poc-cng-taroverture-openmaptiles:0.1.1 .
 kubectl apply -f k8s/local/namespace.yaml -f k8s/local/ksvc.yaml
 
 # cluster-local ドメインなので内部ゲートウェイ経由で確認
@@ -67,8 +67,8 @@ curl -H "Host: taroverture-openmaptiles.knative-pool.svc.cluster.local" \
 z 上で:
 
 ```sh
-docker build -t taroverture-openmaptiles:0.1.0 .
-docker save taroverture-openmaptiles:0.1.0 | ctr -n k8s.io images import -
+docker build -t taroverture-openmaptiles:0.1.1 .
+docker save taroverture-openmaptiles:0.1.1 | ctr -n k8s.io images import -
 kubectl apply -f k8s/z/ksvc.yaml
 curl http://taroverture-openmaptiles.yuiseki.com/health
 ```
